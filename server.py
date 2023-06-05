@@ -1,7 +1,8 @@
 import socket
 import threading
 
-clients= []
+clientsSub= []
+clientPub = []
 topics = []
 message = []
 
@@ -16,38 +17,44 @@ def main():
     
     while True:
         client, addr = server.accept()
-        data = client.recv(1024)
-        print(data)
+        pubOrSub = client.recv(1024)
 
-        clients.append(client)
-    
-        thread = threading.Thread(target= messagesTreatment, args=[client])
-        thread.start()
-
-
-
-def messagesTreatment(client):
+        if pubOrSub == b'publisher':
+            clientPub.append(client)
+            thread = threading.Thread(target= messagesTreatment, args=[client, addr])
+            thread.start()
+        elif pubOrSub==b'subscriber':
+            clientsSub.append(client)
+            thread = threading.Thread(target= messagesTreatment, args=[client, addr])
+            thread.start()
+        
+        
+    """
     while True:
-        topic = client.recv(1024)
-        topics.append(topic)
+        data = client.recv(1024)
+        print(data)"""
+    
 
+
+
+def messagesTreatment(client, addr):
+    topic = client.recv(1024)
+    topics.append(topic)
+
+    while True:
         msg = client.recv(1024)
-
         topic_msg = [topic, msg]
 
+        for c in clientsSub:
+            print(f"{c}")
+            c.sendall(msg)
+
         try:
-            topic in topics
-            indice = message.index(topic)
-            message[indice] = topic_msg
+            if topic in topics:
+                indice = message.index(topic)
+                message[indice] = topic_msg
         except:
             message.append(topic_msg)
 
-        broadcast(msg)
-       
-
-def broadcast(msg):
-    while True:
-        for clientItem in clients:
-            clientItem.send(msg)
 
 main()
